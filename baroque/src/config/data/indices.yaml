@@ -1,0 +1,47 @@
+paths:
+  env_file: ".env"
+  output_dir: "data/raw/indices"
+
+alpaca:
+  api_base_url: "https://data.alpaca.markets/v2/stocks"
+  timeframe: "1Day"
+  feed: "iex"
+  adjustment: "all"
+  limit: 10000
+
+bars:
+  symbols:
+    - "SPY"
+    - "QQQ"
+  start_date: "max"
+  end_date: "today"
+  earliest_request_date: "1900-01-01"
+
+cleaning:
+  input_dir: "data/raw/indices"
+  output_path: "data/processed/indices_panel.csv"
+  symbols:
+    - "SPY"
+    - "QQQ"
+  required_columns:
+    - "date"
+    - "timestamp"
+    - "symbol"
+    - "open"
+    - "high"
+    - "low"
+    - "close"
+    - "volume"
+    - "trade_count"
+    - "vwap"
+  float_columns:
+    - "open"
+    - "high"
+    - "low"
+    - "close"
+    - "vwap"
+  integer_columns:
+    - "volume"
+    - "trade_count"
+  max_allowed_calendar_gap_days: 10
+  max_isolated_edge_rows: 3
