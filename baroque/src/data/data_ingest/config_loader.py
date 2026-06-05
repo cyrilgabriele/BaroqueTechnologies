@@ -10,7 +10,7 @@ import yaml
 
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-DEFAULT_CONFIG_PATH = REPO_ROOT / "baroque" / "src" / "config" / "data" / "indices.yaml"
+DEFAULT_CONFIG_PATH = REPO_ROOT / "baroque" / "src" / "config" / "data" / "data_config.yaml"
 
 
 @dataclass(frozen=True)
