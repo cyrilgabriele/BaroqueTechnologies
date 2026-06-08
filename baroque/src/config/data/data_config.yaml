@@ -6,7 +6,7 @@ alpaca:
   api_base_url: "https://data.alpaca.markets/v2/stocks"
   timeframe: "1Day"
   feed: "iex"
-  adjustment: "all"
+  adjustment: "dividend"
   limit: 10000
 
 bars:
