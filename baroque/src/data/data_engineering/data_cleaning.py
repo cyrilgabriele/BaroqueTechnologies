@@ -1,4 +1,4 @@
-"""Build a cleaned flat panel dataset from raw benchmark ETF bars."""
+"""Build a cleaned flat panel dataset from raw historical bars."""
 
 from __future__ import annotations
 
@@ -24,7 +24,13 @@ class CleaningSummary:
 
 def parse_args(config: DataCleaningConfig) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Build a cleaned flat panel dataset from raw benchmark ETF bars."
+        description="Build a cleaned flat panel dataset from raw historical bars."
+    )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help="Path to the data cleaning YAML config. Defaults to the ETF config.",
     )
     parser.add_argument(
         "--symbols",
@@ -49,6 +55,17 @@ def parse_args(config: DataCleaningConfig) -> argparse.Namespace:
         ),
     )
     return parser.parse_args()
+
+
+def parse_config_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help="Path to the data cleaning YAML config. Defaults to the ETF config.",
+    )
+    return parser.parse_known_args()[0]
 
 
 def load_symbol_frame(symbol: str, config: DataCleaningConfig) -> pd.DataFrame:
@@ -181,8 +198,16 @@ def trim_isolated_edge_segments(
 def validate_ohlcv_relationships(frame: pd.DataFrame, symbol: str) -> None:
     high_too_low = frame["high"] < frame[["open", "close", "low"]].max(axis=1)
     low_too_high = frame["low"] > frame[["open", "close", "high"]].min(axis=1)
-    negative_volume = frame["volume"] < 0
-    negative_trade_count = frame["trade_count"] < 0
+    negative_volume = (
+        frame["volume"] < 0
+        if "volume" in frame.columns
+        else pd.Series(False, index=frame.index)
+    )
+    negative_trade_count = (
+        frame["trade_count"] < 0
+        if "trade_count" in frame.columns
+        else pd.Series(False, index=frame.index)
+    )
 
     invalid_rows = high_too_low | low_too_high | negative_volume | negative_trade_count
     if invalid_rows.any():
@@ -267,7 +292,12 @@ def print_summary(
 
 
 def main() -> None:
-    config = load_data_cleaning_config()
+    config_args = parse_config_args()
+    config = (
+        load_data_cleaning_config(config_args.config)
+        if config_args.config is not None
+        else load_data_cleaning_config()
+    )
     args = parse_args(config)
     symbols = normalize_symbols(args.symbols)
     output_path = Path(args.output)

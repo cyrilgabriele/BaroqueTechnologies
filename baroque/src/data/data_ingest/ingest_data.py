@@ -1,18 +1,15 @@
-"""Fetch daily benchmark ETF bars from Alpaca and store them under data/raw/indices."""
+"""Fetch historical bars from a configured provider and store raw CSV files."""
 
 from __future__ import annotations
 
 import argparse
 import csv
-import json
-import os
 from pathlib import Path
 from typing import Iterable
-from urllib.error import HTTPError, URLError
-from urllib.parse import quote, urlencode
-from urllib.request import Request, urlopen
 
 from config_loader import DataIngestConfig, load_data_ingest_config
+from providers import get_provider
+from providers.base import BarRow
 
 
 def parse_args() -> argparse.Namespace:
@@ -28,38 +25,6 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def load_env_file(path: Path) -> None:
-    if not path.exists():
-        return
-
-    for raw_line in path.read_text().splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-
-        key, value = line.split("=", 1)
-        key = key.strip()
-        value = value.strip().strip("'\"")
-        os.environ.setdefault(key, value)
-
-
-def get_alpaca_credentials(config: DataIngestConfig) -> tuple[str, str]:
-    if config.env_file is None:
-        raise RuntimeError("Alpaca configs must declare paths.env_file.")
-
-    load_env_file(config.env_file)
-
-    api_key = os.environ.get("APCA_API_KEY_ID")
-    api_secret = os.environ.get("APCA_API_SECRET_KEY")
-    if not api_key or not api_secret:
-        raise RuntimeError(
-            "Missing Alpaca credentials. Set APCA_API_KEY_ID and "
-            "APCA_API_SECRET_KEY in the environment or in .env."
-        )
-
-    return api_key, api_secret
-
-
 def resolve_start_date(start: str, earliest_request_date: str) -> str:
     if start.strip().lower() == "max":
         return earliest_request_date
@@ -67,168 +32,50 @@ def resolve_start_date(start: str, earliest_request_date: str) -> str:
     return start
 
 
-def build_bars_url(
-    *,
-    config: DataIngestConfig,
-    symbol: str,
-    start: str,
-    end: str,
-    page_token: str | None,
-) -> str:
-    if (
-        config.timeframe is None
-        or config.adjustment is None
-        or config.feed is None
-    ):
-        raise RuntimeError("Alpaca bar requests require timeframe, adjustment, and feed.")
-
-    params = {
-        "timeframe": config.timeframe,
-        "start": start,
-        "end": end,
-        "adjustment": config.adjustment,
-        "feed": config.feed,
-        "limit": config.limit,
-    }
-    if page_token:
-        params["page_token"] = page_token
-
-    symbol_path = quote(symbol.upper(), safe="")
-    return f"{config.api_base_url}/{symbol_path}/bars?{urlencode(params)}"
-
-
-def api_get_json(url: str, api_key: str, api_secret: str) -> dict:
-    request = Request(
-        url,
-        headers={
-            "accept": "application/json",
-            "APCA-API-KEY-ID": api_key,
-            "APCA-API-SECRET-KEY": api_secret,
-        },
-        method="GET",
-    )
-
-    try:
-        with urlopen(request, timeout=30) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except HTTPError as exc:
-        body = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(
-            f"Alpaca request failed with HTTP {exc.code} for {url}: {body}"
-        ) from exc
-    except URLError as exc:
-        raise RuntimeError(f"Failed to reach Alpaca for {url}: {exc.reason}") from exc
-
-
-def fetch_symbol_bars(
-    *,
-    config: DataIngestConfig,
-    symbol: str,
-    start: str,
-    end: str,
-    api_key: str,
-    api_secret: str,
-) -> list[dict]:
-    all_bars: list[dict] = []
-    page_token: str | None = None
-
-    while True:
-        url = build_bars_url(
-            config=config,
-            symbol=symbol,
-            start=start,
-            end=end,
-            page_token=page_token,
-        )
-        payload = api_get_json(url, api_key, api_secret)
-        bars = payload.get("bars", [])
-        all_bars.extend(bars)
-
-        page_token = payload.get("next_page_token")
-        if not page_token:
-            break
-
-    return all_bars
-
-
-def normalise_bar(symbol: str, bar: dict) -> dict[str, str | int | float]:
-    timestamp = bar.get("t", "")
-    return {
-        "date": timestamp[:10],
-        "timestamp": timestamp,
-        "symbol": symbol.upper(),
-        "open": bar.get("o", ""),
-        "high": bar.get("h", ""),
-        "low": bar.get("l", ""),
-        "close": bar.get("c", ""),
-        "volume": bar.get("v", ""),
-        "trade_count": bar.get("n", ""),
-        "vwap": bar.get("vw", ""),
-    }
-
-
 def write_csv(
-    output_dir: Path, symbol: str, rows: Iterable[dict[str, str | int | float]]
+    output_dir: Path,
+    symbol: str,
+    rows: Iterable[BarRow],
+    fieldnames: tuple[str, ...],
 ) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / f"{symbol.upper()}.csv"
-    fieldnames = [
-        "date",
-        "timestamp",
-        "symbol",
-        "open",
-        "high",
-        "low",
-        "close",
-        "volume",
-        "trade_count",
-        "vwap",
-    ]
 
     with output_path.open("w", newline="", encoding="utf-8") as csv_file:
-        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
 
     return output_path
 
 
-def main() -> None:
-    args = parse_args()
-    config = (
-        load_data_ingest_config(args.config)
-        if args.config is not None
-        else load_data_ingest_config()
-    )
-    if config.provider != "alpaca":
-        raise NotImplementedError(
-            f"{config.provider} config loading is supported, but this ingest script "
-            "currently only fetches Alpaca bars."
-        )
-
-    api_key, api_secret = get_alpaca_credentials(config)
+def ingest_data(config: DataIngestConfig) -> None:
+    provider = get_provider(config)
     start = resolve_start_date(config.start_date, config.earliest_request_date)
 
     for symbol in config.symbols:
-        bars = fetch_symbol_bars(
-            config=config,
-            symbol=symbol,
-            start=start,
-            end=config.end_date,
-            api_key=api_key,
-            api_secret=api_secret,
-        )
-        if not bars:
+        rows = provider.fetch_symbol_bars(symbol, start, config.end_date)
+        if not rows:
             raise RuntimeError(
-                f"No bars returned for {symbol.upper()} between {start} and {config.end_date}."
+                f"No bars returned for {symbol.upper()} between {start} and "
+                f"{config.end_date} from {provider.name}."
             )
 
         output_path = write_csv(
             config.output_dir,
             symbol,
-            [normalise_bar(symbol, bar) for bar in bars],
+            rows,
+            config.output_columns,
         )
-        print(f"Wrote {len(bars)} rows to {output_path}")
+        print(f"Wrote {len(rows)} rows to {output_path}")
+
+
+def main() -> None:
+    args = parse_args()
+    if args.config is not None:
+        config = load_data_ingest_config(args.config)
+        ingest_data(config)
+    else: raise Exception("Config missing!")
 
 
 if __name__ == "__main__":

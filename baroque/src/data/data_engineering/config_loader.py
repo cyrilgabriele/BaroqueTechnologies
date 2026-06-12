@@ -28,9 +28,17 @@ def _resolve_repo_path(path_value: str) -> Path:
     return REPO_ROOT / path_value
 
 
+def resolve_config_path(config_path: Path) -> Path:
+    if config_path.is_absolute():
+        return config_path
+
+    return REPO_ROOT / config_path
+
+
 def load_data_cleaning_config(
     config_path: Path = DEFAULT_CONFIG_PATH,
 ) -> DataCleaningConfig:
+    config_path = resolve_config_path(config_path)
     with config_path.open(encoding="utf-8") as config_file:
         raw_config = yaml.safe_load(config_file)
 

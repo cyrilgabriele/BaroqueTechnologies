@@ -19,6 +19,31 @@ Track what was changed, why it was changed, and any important notes.
 
 ---
 
+### [2026-06-12] - Cyril Gabriele
+
+#### What
+- Refactored data ingest into a provider-based architecture.
+- Kept [`baroque/src/data/data_ingest/ingest_data.py`](/home/gabc/00_projects/BaroqueTechnologies/baroque/src/data/data_ingest/ingest_data.py) as the generic ingest entrypoint for config loading, provider dispatch, symbol iteration, and CSV writing.
+- Added a provider contract in [`baroque/src/data/data_ingest/providers/base.py`](/home/gabc/00_projects/BaroqueTechnologies/baroque/src/data/data_ingest/providers/base.py).
+- Added a provider registry/factory in [`baroque/src/data/data_ingest/providers/__init__.py`](/home/gabc/00_projects/BaroqueTechnologies/baroque/src/data/data_ingest/providers/__init__.py).
+- Moved Alpaca-specific auth, request, pagination, and normalization logic into [`baroque/src/data/data_ingest/providers/alpaca.py`](/home/gabc/00_projects/BaroqueTechnologies/baroque/src/data/data_ingest/providers/alpaca.py).
+- Implemented Binance kline ingestion in [`baroque/src/data/data_ingest/providers/binance.py`](/home/gabc/00_projects/BaroqueTechnologies/baroque/src/data/data_ingest/providers/binance.py), including date-to-millisecond conversion, pagination, configured field mapping, and normalized raw rows.
+- Extended [`baroque/src/data/data_ingest/config_loader.py`](/home/gabc/00_projects/BaroqueTechnologies/baroque/src/data/data_ingest/config_loader.py) to validate exactly one supported provider, expose provider config, output columns, and raw Binance field mappings.
+- Updated [`baroque/src/data/data_engineering/data_cleaning.py`](/home/gabc/00_projects/BaroqueTechnologies/baroque/src/data/data_engineering/data_cleaning.py) to accept `--config` and to validate `volume` / `trade_count` only when those columns exist.
+- Updated [`baroque/src/data/data_engineering/config_loader.py`](/home/gabc/00_projects/BaroqueTechnologies/baroque/src/data/data_engineering/config_loader.py) to resolve relative config paths consistently.
+- Updated [`baroque/README.md`](/home/gabc/00_projects/BaroqueTechnologies/baroque/README.md) with the provider architecture, Alpaca ETF commands, Binance BTC commands, and cleaning commands for both configs.
+
+#### Why
+- Multiple strategies will need multiple datasets and providers, so ingest should not remain coupled to Alpaca-specific request logic.
+- Keeping source-specific API behavior inside provider modules makes the ingest entrypoint stable as new sources are added.
+- Driving output columns and Binance raw field mapping from YAML keeps dataset shape explicit and avoids hardcoding source schemas in the generic pipeline.
+- BTC data uses a slimmer schema than the ETF data, so cleaning validation needed to respect config-defined columns instead of assuming every raw panel has `volume` and `trade_count`.
+
+#### Remarks
+- Verified compilation for the data ingest and data engineering packages with `baroque/.venv/bin/python -m compileall`.
+- Verified BTC and ETF config loading, Binance provider construction, Binance kline normalization, and BTC-style cleaning validation without live API calls.
+- Live network ingestion against Binance and Alpaca was not run during this change.
+
 ### [2026-04-10] - Cyril Gabriele
 
 #### What
