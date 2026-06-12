@@ -1,0 +1,95 @@
+paths:
+  output_dir: "data/raw/crypto"
+
+binance:
+  api_base_url: "https://api.binance.com"
+  market_data_endpoint: "/api/v3/klines"
+  limit: 1000
+
+bars:
+  symbols:
+    - "BTCUSDT"
+  interval: "1d"
+  start_date: "max"
+  end_date: "today"
+  earliest_request_date: "2017-08-17"
+  time_zone: "0"
+
+raw_kline_fields:
+  - index: 0
+    source_name: "open_time"
+    output_name: "timestamp"
+    type: "datetime_ms"
+    keep: true
+  - index: 1
+    source_name: "open"
+    output_name: "open"
+    type: "float"
+    keep: true
+  - index: 2
+    source_name: "high"
+    output_name: "high"
+    type: "float"
+    keep: true
+  - index: 3
+    source_name: "low"
+    output_name: "low"
+    type: "float"
+    keep: true
+  - index: 4
+    source_name: "close"
+    output_name: "close"
+    type: "float"
+    keep: true
+  - index: 5
+    source_name: "volume"
+    keep: false
+  - index: 6
+    source_name: "close_time"
+    keep: false
+  - index: 7
+    source_name: "quote_asset_volume"
+    keep: false
+  - index: 8
+    source_name: "number_of_trades"
+    keep: false
+  - index: 9
+    source_name: "taker_buy_base_asset_volume"
+    keep: false
+  - index: 10
+    source_name: "taker_buy_quote_asset_volume"
+    keep: false
+  - index: 11
+    source_name: "unused"
+    keep: false
+
+output_columns:
+  - "date"
+  - "timestamp"
+  - "symbol"
+  - "open"
+  - "high"
+  - "low"
+  - "close"
+
+cleaning:
+  input_dir: "data/raw/crypto"
+  output_path: "data/processed/btc_panel.csv"
+  symbols:
+    - "BTCUSDT"
+  required_columns:
+    - "date"
+    - "timestamp"
+    - "symbol"
+    - "open"
+    - "high"
+    - "low"
+    - "close"
+  float_columns:
+    - "open"
+    - "high"
+    - "low"
+    - "close"
+  integer_columns: []
+  max_allowed_calendar_gap_days: 2
+  max_isolated_edge_rows: 3

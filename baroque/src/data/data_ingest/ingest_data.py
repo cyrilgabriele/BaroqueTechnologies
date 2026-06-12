@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import csv
 import json
 import os
@@ -12,6 +13,19 @@ from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 
 from config_loader import DataIngestConfig, load_data_ingest_config
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Fetch historical bars and store them as raw CSV files."
+    )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help="Path to the data ingest YAML config. Defaults to the ETF config.",
+    )
+    return parser.parse_args()
 
 
 def load_env_file(path: Path) -> None:
@@ -30,6 +44,9 @@ def load_env_file(path: Path) -> None:
 
 
 def get_alpaca_credentials(config: DataIngestConfig) -> tuple[str, str]:
+    if config.env_file is None:
+        raise RuntimeError("Alpaca configs must declare paths.env_file.")
+
     load_env_file(config.env_file)
 
     api_key = os.environ.get("APCA_API_KEY_ID")
@@ -58,6 +75,13 @@ def build_bars_url(
     end: str,
     page_token: str | None,
 ) -> str:
+    if (
+        config.timeframe is None
+        or config.adjustment is None
+        or config.feed is None
+    ):
+        raise RuntimeError("Alpaca bar requests require timeframe, adjustment, and feed.")
+
     params = {
         "timeframe": config.timeframe,
         "start": start,
@@ -170,7 +194,18 @@ def write_csv(
 
 
 def main() -> None:
-    config = load_data_ingest_config()
+    args = parse_args()
+    config = (
+        load_data_ingest_config(args.config)
+        if args.config is not None
+        else load_data_ingest_config()
+    )
+    if config.provider != "alpaca":
+        raise NotImplementedError(
+            f"{config.provider} config loading is supported, but this ingest script "
+            "currently only fetches Alpaca bars."
+        )
+
     api_key, api_secret = get_alpaca_credentials(config)
     start = resolve_start_date(config.start_date, config.earliest_request_date)
 
