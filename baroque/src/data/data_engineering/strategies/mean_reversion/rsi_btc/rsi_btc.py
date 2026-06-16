@@ -121,6 +121,8 @@ def build_entry_state(
     for value in rsi:
         buy_signal = False
         if pd.notna(value):
+            # TODO: maybe adjust this i.e. add some percentage margin to the threshold 
+            # this to prevent buying when the price is just retesting the RSI 30 threshold and then falls again
             if armed and value > oversold_threshold:
                 buy_signal = True
                 armed = False
