@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 from typing import Any
 
+from pydantic import BaseModel, ConfigDict
 import yaml
 
 
@@ -14,8 +14,9 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 SUPPORTED_PROVIDERS = ("alpaca", "binance")
 
 
-@dataclass(frozen=True)
-class DataIngestConfig:
+class DataIngestConfig(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     config_path: Path
     provider: str
     env_file: Path | None

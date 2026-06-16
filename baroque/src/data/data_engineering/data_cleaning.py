@@ -3,17 +3,18 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
 
 import pandas as pd
+from pydantic import BaseModel, ConfigDict
 
 from config_loader import DataCleaningConfig, load_data_cleaning_config
 
 
-@dataclass(frozen=True)
-class CleaningSummary:
+class CleaningSummary(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     symbol: str
     rows_in: int
     rows_out: int

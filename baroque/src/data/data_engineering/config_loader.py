@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
 
+from pydantic import BaseModel, ConfigDict
 import yaml
 
 
@@ -12,8 +12,9 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 DEFAULT_CONFIG_PATH = REPO_ROOT / "baroque" / "src" / "config" / "data" / "etf_data_config.yaml"
 
 
-@dataclass(frozen=True)
-class DataCleaningConfig:
+class DataCleaningConfig(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     input_dir: Path
     output_path: Path
     symbols: tuple[str, ...]

@@ -1,0 +1,9 @@
+paths:
+  input_panel: "data/processed/btc_panel.csv"
+  output_panel: "data/processed/strategies/crypto/btc/rsi_atr_stop_feature_panel.csv"
+
+parameters:
+  rsi_window: 14
+  atr_window: 14
+  oversold_threshold: 30
+  stop_multiple: 2.0

@@ -19,6 +19,24 @@ Track what was changed, why it was changed, and any important notes.
 
 ---
 
+### [2026-06-16] - Cyril Gabriele
+
+#### What
+- Added the BTC RSI/ATR mean-reversion strategy feature panel script.
+- Added a strategy-specific YAML config for the BTC RSI/ATR stop strategy.
+- Kept shared cleaned BTC data strategy-neutral and wrote RSI/ATR features into a separate strategy feature panel.
+- Added RSI(14), ATR(14), oversold armed state, buy signal, and buy-row-only initial stop price features.
+- Updated Baroque domain language to distinguish **Cleaned Panel** from **Strategy Feature Panel**.
+
+#### Why
+- RSI, ATR, entry state, and stop-price helpers are strategy-specific and should not be baked into the shared cleaning layer.
+- The first implementation should stay small while still producing the inputs needed for the RSI re-entry strategy.
+- Computing the initial stop only on buy rows keeps trade-specific information explicit and avoids noisy hypothetical stop values.
+
+#### Remarks
+- The default stop multiple is `2.0 x ATR(14)`.
+- Position sizing, trailing stops, exit simulation, and reward/risk filters are intentionally left for later backtesting work.
+
 ### [2026-06-12] - Cyril Gabriele
 
 #### What

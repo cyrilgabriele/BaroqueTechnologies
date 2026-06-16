@@ -6,7 +6,7 @@ There is no universally best stop loss for an RSI below 30 buy / RSI near 70 sel
 
 For this setup, use the following starting rule:
 
-**Buy only after RSI crosses back above 30, then set the initial stop loss at:**
+**Buy only after RSI has first gone below 30 and later recovers back above 30, then set the initial stop loss at:**
 
 ```text
 Stop = Entry Price - 1.5 to 2.0 x ATR(14)
@@ -28,6 +28,8 @@ ATR stands for Average True Range. It measures how much an asset typically moves
 
 RSI below 30 means the asset is traditionally considered oversold, while RSI above 70 is traditionally considered overbought. However, strong trends can keep RSI overbought or oversold for extended periods, so buying just because RSI is below 30 is dangerous.
 
+The entry should therefore be treated as a stateful trigger, not a one-day crossing rule. Once RSI falls below 30, the strategy is armed. The buy signal happens only when RSI later moves back above 30. This recovery does not need to happen on the next day; the trigger remains active until either the recovery entry occurs or another explicit reset rule is added.
+
 An ATR-based stop adjusts to the asset's current volatility instead of relying on an arbitrary fixed percentage. This matters because a fixed `5%` stop can be too tight for crypto and too wide for a low-volatility stock.
 
 References:
@@ -39,7 +41,7 @@ References:
 
 | Rule | Practical setting |
 | --- | ---: |
-| Entry | RSI falls below 30, then crosses back above 30 |
+| Entry | Arm after RSI falls below 30, then buy when RSI later moves back above 30 |
 | Initial stop | Entry - 1.5 to 2.0 x ATR(14) |
 | Extra confirmation | Stop should also be below the recent swing low if possible |
 | Max risk per trade | 0.5% to 1% of account equity |
